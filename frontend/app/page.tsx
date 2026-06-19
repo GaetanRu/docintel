@@ -94,6 +94,9 @@ export default function Page() {
             <p className="text-sm text-slate-500 mt-1">
               Extract structured data from any document instantly
             </p>
+            <p className="text-xs font-semibold mt-1.5 tracking-wide" style={{ color: '#7C3AED' }}>
+              Powered by Claude API
+            </p>
           </div>
 
           {/* Pill tabs */}
