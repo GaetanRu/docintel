@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-// Store documents in a JSON file next to the frontend
-const DB_PATH = path.join(process.cwd(), 'data', 'documents.json');
+// On Vercel (serverless), only /tmp is writable. Locally use data/ folder.
+const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(process.cwd(), 'data');
+const DB_PATH = path.join(DATA_DIR, 'documents.json');
 
 export interface StoredDocument {
   id: number;
