@@ -238,7 +238,7 @@ export default function BatchTab({ onDocumentAdded }: Props) {
           </div>
           <h3 className="text-lg font-bold text-slate-800 mb-2">Drop files to process in bulk</h3>
           <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
-            Select multiple files — Claude extracts structured data from each one.
+            Select multiple files — structured data extracted from each one automatically.
           </p>
         </div>
       )}

@@ -92,7 +92,7 @@ export default function Page() {
               Document Intelligence
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Powered by Claude · Extract structured data from any document instantly
+              Extract structured data from any document instantly
             </p>
           </div>
 

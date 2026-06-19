@@ -129,7 +129,7 @@ export default function ProcessTab({ onDocumentAdded }: Props) {
             boxShadow: canExtract && !loading ? '0 4px 16px rgba(99,102,241,0.40)' : undefined,
           }}>
           {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-          {loading ? 'Analysing with Claude…' : '🚀 Extract Document'}
+          {loading ? 'Analysing document…' : '🚀 Extract Document'}
         </button>
       </div>
 

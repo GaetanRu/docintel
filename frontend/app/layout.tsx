@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'DocIntel — AI Document Intelligence',
-  description: 'Upload any business document. Claude extracts every key detail instantly.',
+  description: 'Upload any business document. Extract structured, actionable data instantly.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
