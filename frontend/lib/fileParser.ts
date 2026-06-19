@@ -1,5 +1,5 @@
 export interface FileResult {
-  kind: 'text' | 'image';
+  kind: 'text' | 'image' | 'pdf';
   content: string | Buffer;
   media_type?: string;
   filename: string;
@@ -34,13 +34,13 @@ export async function parseFile(buffer: Buffer, filename: string): Promise<FileR
 
   let text = '';
 
+  // PDFs go directly to Claude as a native document — no DOM-dependent pdf-parse needed
+  if (ext === 'pdf') {
+    return { kind: 'pdf', content: buffer, filename };
+  }
+
   try {
-    if (ext === 'pdf') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
-      text = data.text ?? '';
-    } else if (ext === 'docx') {
+    if (ext === 'docx') {
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer });
       text = result.value ?? '';

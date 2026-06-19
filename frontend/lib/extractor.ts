@@ -54,6 +54,30 @@ export async function extractDocument(fileResult: FileResult): Promise<Record<st
 
   const client = new Anthropic({ apiKey });
 
+  // PDFs: send directly to Claude as a native document block (no pdf-parse, no DOM)
+  if (fileResult.kind === 'pdf') {
+    const pdfBuffer = fileResult.content as Buffer;
+    const base64 = pdfBuffer.toString('base64');
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+          } as any,
+          { type: 'text', text: IMAGE_PROMPT },
+        ],
+      }],
+    });
+
+    return cleanJson(response.content[0].type === 'text' ? response.content[0].text : '');
+  }
+
   if (fileResult.kind === 'image') {
     const imageBuffer = fileResult.content as Buffer;
     const base64 = imageBuffer.toString('base64');
