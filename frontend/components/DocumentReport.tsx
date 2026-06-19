@@ -64,7 +64,7 @@ export default function DocumentReport({ doc, sourceName }: Props) {
   const finSummaryRows: [string, string][] = finRaw && typeof finRaw === 'object'
     ? Object.entries(finRaw)
         .filter(([k]) => k !== 'line_items')
-        .map(([k, v]) => [fmtKey(k), fmtVal(v)])
+        .map(([k, v]) => [fmtKey(k), fmtVal(v)] as [string, string])
         .filter(([, v]) => v && v !== '—' && v !== 'null')
     : [];
 
