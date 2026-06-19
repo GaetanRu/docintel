@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ProcessTab from '@/components/ProcessTab';
 import BatchTab from '@/components/BatchTab';
 import AnalyticsTab from '@/components/AnalyticsTab';
 import { api } from '@/lib/api';
+import type { ExtractedDocument } from '@/types';
 
 type Tab = 'process' | 'batch' | 'analytics';
 
@@ -16,10 +17,20 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'analytics', label: 'Analytics',       icon: '📊' },
 ];
 
+const STORAGE_KEY = 'docintel_documents';
+
 export default function Page() {
-  const [tab, setTab]           = useState<Tab>('process');
-  const [apiOk, setApiOk]       = useState<boolean | null>(null);
-  const [docCount, setDocCount] = useState(0);
+  const [tab, setTab]         = useState<Tab>('process');
+  const [apiOk, setApiOk]     = useState<boolean | null>(null);
+  const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
+
+  // Load persisted documents from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setDocuments(JSON.parse(stored));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     api.health()
@@ -27,14 +38,40 @@ export default function Page() {
       .catch(() => setApiOk(false));
   }, []);
 
+  const saveToStorage = (docs: ExtractedDocument[]) => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(docs)); } catch {}
+  };
+
+  const handleDocumentAdded = useCallback((doc: ExtractedDocument) => {
+    const enriched: ExtractedDocument = {
+      ...doc,
+      id: doc.id ?? Date.now(),
+      processed_at: doc.processed_at ?? new Date().toISOString(),
+    };
+    setDocuments((prev) => {
+      const next = [enriched, ...prev];
+      saveToStorage(next);
+      return next;
+    });
+  }, []);
+
+  const handleDeleteDocument = useCallback((id: number) => {
+    setDocuments((prev) => {
+      const next = prev.filter((d) => d.id !== id);
+      saveToStorage(next);
+      return next;
+    });
+  }, []);
+
   const handleClearHistory = () => {
     if (!confirm('Delete all document history? This cannot be undone.')) return;
-    window.location.reload();
+    setDocuments([]);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   };
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F9FAFB' }}>
-      <Sidebar hasHistory={docCount > 0} onClearHistory={handleClearHistory} />
+      <Sidebar hasHistory={documents.length > 0} onClearHistory={handleClearHistory} />
 
       <main className="flex-1 overflow-y-auto">
         {apiOk === false && (
@@ -42,11 +79,9 @@ export default function Page() {
             style={{ background: '#FEF2F2', borderBottom: '1px solid #FCA5A5', color: '#991B1B' }}>
             <AlertTriangle size={16} />
             <span>
-              <strong>Backend unreachable or API key missing.</strong>&nbsp;
-              Make sure FastAPI is running on port 8000 and{' '}
-              <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#FEE2E2' }}>ANTHROPIC_API_KEY</code>
-              {' '}is set in{' '}
-              <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#FEE2E2' }}>.env</code>.
+              <strong>API key missing or unreachable.</strong>&nbsp;
+              Add <code className="px-1.5 py-0.5 rounded text-xs" style={{ background: '#FEE2E2' }}>ANTHROPIC_API_KEY</code>
+              {' '}to your Vercel environment variables.
             </span>
           </div>
         )}
@@ -75,9 +110,14 @@ export default function Page() {
             ))}
           </div>
 
-          {tab === 'process'   && <ProcessTab />}
-          {tab === 'batch'     && <BatchTab />}
-          {tab === 'analytics' && <AnalyticsTab onDocCountChange={setDocCount} />}
+          {tab === 'process'   && <ProcessTab onDocumentAdded={handleDocumentAdded} />}
+          {tab === 'batch'     && <BatchTab onDocumentAdded={handleDocumentAdded} />}
+          {tab === 'analytics' && (
+            <AnalyticsTab
+              documents={documents}
+              onDeleteDocument={handleDeleteDocument}
+            />
+          )}
         </div>
       </main>
     </div>

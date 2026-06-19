@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { Trash2, ChevronDown, ChevronUp, Search, RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { ExtractedDocument, Stats } from '@/types';
+import { Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import type { ExtractedDocument } from '@/types';
 import { PRIORITY_COLOR, PRIORITY_BG, PRIORITY_ICON, normList, safeStr } from '@/lib/utils';
 
 const PIE_COLORS = ['#6366F1', '#7C3AED', '#A78BFA', '#C4B5FD', '#DDD6FE'];
@@ -40,47 +39,53 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: (n: number) => void }) {
-  const [stats, setStats]         = useState<Stats | null>(null);
-  const [docs, setDocs]           = useState<ExtractedDocument[]>([]);
-  const [loading, setLoading]     = useState(true);
+interface Props {
+  documents: ExtractedDocument[];
+  onDeleteDocument: (id: number) => void;
+}
+
+export default function AnalyticsTab({ documents, onDeleteDocument }: Props) {
   const [search, setSearch]       = useState('');
   const [filterPrio, setFilter]   = useState<string>('All');
   const [expanded, setExpanded]   = useState<number | null>(null);
   const [deleting, setDeleting]   = useState<number | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const [s, d] = await Promise.all([api.stats(), api.documents()]);
-      setStats(s); setDocs(d);
-      onDocCountChange?.(d.length);
-    } catch {
-      // keep existing state
-    } finally {
-      setLoading(false); setRefreshing(false);
+  // Compute stats client-side from documents prop
+  const stats = useMemo(() => {
+    const byPriorityMap: Record<string, number> = {};
+    const byTypeMap: Record<string, number>     = {};
+    const byDayMap: Record<string, number>      = {};
+
+    for (const d of documents) {
+      const p = (d.priority as string) || 'Medium';
+      byPriorityMap[p] = (byPriorityMap[p] || 0) + 1;
+
+      const t = (d.document_type as string) || 'Other';
+      byTypeMap[t] = (byTypeMap[t] || 0) + 1;
+
+      const day = d.processed_at ? d.processed_at.slice(0, 10) : 'unknown';
+      byDayMap[day] = (byDayMap[day] || 0) + 1;
     }
-  }, [onDocCountChange]);
 
-  useEffect(() => { load(); }, [load]);
+    return {
+      total: documents.length,
+      by_priority: Object.entries(byPriorityMap).map(([priority, cnt]) => ({ priority, cnt })),
+      by_type: Object.entries(byTypeMap)
+        .map(([document_type, cnt]) => ({ document_type, cnt }))
+        .sort((a, b) => b.cnt - a.cnt),
+      by_day: Object.entries(byDayMap)
+        .map(([day, cnt]) => ({ day, cnt }))
+        .sort((a, b) => a.day.localeCompare(b.day)),
+    };
+  }, [documents]);
 
   const handleDelete = async (id: number) => {
     setDeleting(id);
-    try {
-      await api.deleteDocument(id);
-      setDocs((prev) => prev.filter((d) => d.id !== id));
-      setStats((prev) => prev ? { ...prev, total: prev.total - 1 } : prev);
-      onDocCountChange?.(docs.length - 1);
-    } catch (e) {
-      alert('Delete failed: ' + (e as Error).message);
-    } finally {
-      setDeleting(null);
-    }
+    onDeleteDocument(id);
+    setDeleting(null);
   };
 
-  const filtered = docs.filter((d) => {
+  const filtered = documents.filter((d) => {
     const matchSearch = !search ||
       d.source_name?.toLowerCase().includes(search.toLowerCase()) ||
       d.document_type?.toLowerCase().includes(search.toLowerCase()) ||
@@ -89,37 +94,26 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
     return matchSearch && matchPrio;
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-slate-400">Loading analytics…</p>
-        </div>
-      </div>
-    );
-  }
+  const priorityData = stats.by_priority;
+  const typeData     = stats.by_type.slice(0, 8);
+  const dayData      = stats.by_day.slice(-14);
 
-  const priorityData = stats?.by_priority ?? [];
-  const typeData     = stats?.by_type?.slice(0, 8) ?? [];
-  const dayData      = stats?.by_day?.slice(-14) ?? [];
-
-  const highCount   = priorityData.find((p) => p.priority === 'High')?.cnt   ?? 0;
-  const medCount    = priorityData.find((p) => p.priority === 'Medium')?.cnt ?? 0;
-  const lowCount    = priorityData.find((p) => p.priority === 'Low')?.cnt    ?? 0;
+  const highCount = priorityData.find((p) => p.priority === 'High')?.cnt   ?? 0;
+  const medCount  = priorityData.find((p) => p.priority === 'Medium')?.cnt ?? 0;
+  const lowCount  = priorityData.find((p) => p.priority === 'Low')?.cnt    ?? 0;
 
   return (
     <div className="space-y-6">
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Total Docs"     value={stats?.total   ?? 0}  color="#6366F1" icon="📁" />
-        <StatCard label="High Priority"  value={highCount}              color="#EF4444" icon="🔴" />
-        <StatCard label="Medium Priority" value={medCount}             color="#F59E0B" icon="🟡" />
-        <StatCard label="Low Priority"   value={lowCount}              color="#10B981" icon="🟢" />
+        <StatCard label="Total Docs"      value={stats.total} color="#6366F1" icon="📁" />
+        <StatCard label="High Priority"   value={highCount}   color="#EF4444" icon="🔴" />
+        <StatCard label="Medium Priority" value={medCount}    color="#F59E0B" icon="🟡" />
+        <StatCard label="Low Priority"    value={lowCount}    color="#10B981" icon="🟢" />
       </div>
 
       {/* Charts row */}
-      {stats && stats.total > 0 && (
+      {stats.total > 0 && (
         <div className="grid grid-cols-3 gap-4">
           {/* Daily processing bar chart */}
           <div className="col-span-2 bg-white rounded-2xl p-5"
@@ -140,9 +134,7 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[180px] flex items-center justify-center text-sm text-slate-400">
-                No timeline data yet
-              </div>
+              <div className="h-[180px] flex items-center justify-center text-sm text-slate-400">No timeline data yet</div>
             )}
           </div>
 
@@ -154,8 +146,7 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie data={typeData.map((t) => ({ name: t.document_type, value: t.cnt }))}
-                    dataKey="value" cx="50%" cy="45%" outerRadius={64} innerRadius={36}
-                    paddingAngle={3}>
+                    dataKey="value" cx="50%" cy="45%" outerRadius={64} innerRadius={36} paddingAngle={3}>
                     {typeData.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
@@ -167,9 +158,7 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[180px] flex items-center justify-center text-sm text-slate-400">
-                No type data yet
-              </div>
+              <div className="h-[180px] flex items-center justify-center text-sm text-slate-400">No type data yet</div>
             )}
           </div>
         </div>
@@ -201,15 +190,11 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
               </button>
             ))}
           </div>
-          <button onClick={() => load(true)} disabled={refreshing}
-            className="p-2 rounded-xl transition-colors hover:bg-slate-50 disabled:opacity-40">
-            <RefreshCw size={14} className={refreshing ? 'animate-spin text-indigo-500' : 'text-slate-400'} />
-          </button>
         </div>
 
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-sm">
-            {docs.length === 0
+            {documents.length === 0
               ? 'No documents processed yet. Upload one to get started.'
               : 'No documents match your filter.'}
           </div>
@@ -223,7 +208,6 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
                 <div key={doc.id ?? idx} style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #F8FAFF' : undefined }}>
                   <div className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-slate-50/60 cursor-pointer"
                     onClick={() => setExpanded(isExpanded ? null : idx)}>
-                    {/* Priority dot */}
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{ background: PRIORITY_COLOR[doc.priority ?? 'Medium'] }} />
 
@@ -258,7 +242,6 @@ export default function AnalyticsTab({ onDocCountChange }: { onDocCountChange?: 
                     </div>
                   </div>
 
-                  {/* Expanded details */}
                   {isExpanded && (
                     <div className="px-5 pb-5 space-y-3" style={{ borderTop: '1px solid #F1F5F9', background: '#FAFBFF' }}>
                       {doc.summary && (

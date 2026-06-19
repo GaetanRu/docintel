@@ -3,10 +3,14 @@
 import { useState, useRef } from 'react';
 import { Upload, Play, CheckCircle2, XCircle, Loader2, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { BatchResult } from '@/types';
+import type { BatchResult, ExtractedDocument } from '@/types';
 import { PRIORITY_BG, PRIORITY_ICON } from '@/lib/utils';
 
-export default function BatchTab() {
+interface Props {
+  onDocumentAdded: (doc: ExtractedDocument) => void;
+}
+
+export default function BatchTab({ onDocumentAdded }: Props) {
   const [files, setFiles]         = useState<File[]>([]);
   const [dragging, setDragging]   = useState(false);
   const [results, setResults]     = useState<BatchResult[]>([]);
@@ -49,7 +53,9 @@ export default function BatchTab() {
       setProgress(Math.round((i / files.length) * 100));
       try {
         const r = await api.extract(f);
+        r.source_name = f.name;
         out.push({ status: 'ok', filename: f.name, result: r });
+        onDocumentAdded(r);
       } catch (e) {
         out.push({ status: 'error', filename: f.name, error: (e as Error).message });
       }
@@ -162,7 +168,6 @@ export default function BatchTab() {
                 <div key={f.name} className="rounded-xl overflow-hidden"
                   style={{ border: '1px solid #F1F5F9' }}>
                   <div className="flex items-center gap-3 px-4 py-3">
-                    {/* Status icon */}
                     <div className="flex-shrink-0">
                       {!res && !running && (
                         <div className="w-5 h-5 rounded-full" style={{ background: '#E5E7EB' }} />
@@ -203,7 +208,6 @@ export default function BatchTab() {
                     </div>
                   </div>
 
-                  {/* Expanded result summary */}
                   {isExpanded && res?.result && (
                     <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: '#F1F5F9' }}>
                       <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border mb-3 ${PRIORITY_BG[res.result.priority ?? 'Medium']}`}>

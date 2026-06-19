@@ -6,7 +6,11 @@ import { api } from '@/lib/api';
 import type { ExtractedDocument } from '@/types';
 import DocumentReport from './DocumentReport';
 
-export default function ProcessTab() {
+interface Props {
+  onDocumentAdded: (doc: ExtractedDocument) => void;
+}
+
+export default function ProcessTab({ onDocumentAdded }: Props) {
   const [mode, setMode]           = useState<'file' | 'text'>('file');
   const [file, setFile]           = useState<File | null>(null);
   const [pasteText, setPasteText] = useState('');
@@ -34,13 +38,15 @@ export default function ProcessTab() {
       let extractedResult: ExtractedDocument;
       if (mode === 'file' && file) {
         extractedResult = await api.extract(file);
+        extractedResult.source_name = file.name;
       } else {
-        // For paste-text: create a temporary .txt file
         const blob = new Blob([pasteText], { type: 'text/plain' });
         const txtFile = new File([blob], 'pasted_text.txt', { type: 'text/plain' });
         extractedResult = await api.extract(txtFile);
+        extractedResult.source_name = 'pasted_text.txt';
       }
       setResult(extractedResult);
+      onDocumentAdded(extractedResult);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -109,11 +115,7 @@ export default function ProcessTab() {
             placeholder="Paste your document text here…"
             rows={8}
             className="w-full px-4 py-3 rounded-xl text-sm text-slate-800 outline-none resize-y transition-all"
-            style={{
-              border: '1px solid #E5E7EB',
-              background: '#FAFAFA',
-              lineHeight: '1.7',
-            }}
+            style={{ border: '1px solid #E5E7EB', background: '#FAFAFA', lineHeight: '1.7' }}
           />
         )}
 
