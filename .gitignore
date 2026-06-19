@@ -1,0 +1,34 @@
+# Obsolete Python backend (replaced by Next.js API routes)
+backend/
+start-backend.sh
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment — NEVER commit API keys
+.env
+.env.*
+.env.local
+.env.*.local
+
+# Database & user data
+*.db
+*.db-shm
+*.db-wal
+frontend/data/
+
+# Next.js
+.next/
+out/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
