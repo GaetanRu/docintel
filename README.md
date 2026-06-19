@@ -7,7 +7,7 @@
 ![Claude](https://img.shields.io/badge/Claude-claude--opus--4--5-blueviolet)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**[Live Demo](https://YOUR-PROJECT.vercel.app)** — drop in `demo/sample_invoice.pdf` to see it work immediately.
+**[Live Demo](https://docintel-taupe.vercel.app)** — drop in `demo/sample_invoice.pdf` to see it work immediately.
 
 ---
 
@@ -67,7 +67,7 @@ No manual data entry. No copy-pasting. The entire workflow runs in a browser wit
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/docintel.git
+git clone https://github.com/GaetanRu/docintel.git
 cd docintel/frontend
 npm install
 ```
@@ -173,4 +173,4 @@ MIT — free to use, fork, and build on.
 
 ---
 
-*Built by [Gaetan Rutayisire](https://www.linkedin.com/in/YOUR_LINKEDIN) · Powered by Anthropic Claude · 2025*
+*Built by [Gaetan Rutayisire](https://www.linkedin.com/in/gaetanrutayisire) · Powered by Anthropic Claude · 2025*
